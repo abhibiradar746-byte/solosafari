@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoloSafiri India - Smart Solo Travel App</title>
+    <meta name="description" content="A premium solo travel mobile web app for India. Stay safe, travel cheap, and discover amazing sights with real-time GPS routing, SOS alerts, AI chatbot guide, and traveler matching.">
+    <!-- Google Fonts: Poppins & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Core CSS stylesheet -->
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="app-container">
+        <!-- Desktop background decorative elements -->
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
+        
+        <!-- Mobile Frame Mockup (centered on desktop, full-screen on mobile) -->
+        <div class="phone-frame" id="phone-frame">
+            <div class="phone-notch"></div>
+            
+            <!-- Phone Header Bar -->
+            <header class="app-header">
+                <div class="status-bar">
+                    <span class="time-stamp" id="status-time">15:30</span>
+                    <div class="status-icons">
+                        <i class="fa-solid fa-signal"></i>
+                        <i class="fa-solid fa-wifi"></i>
+                        <i class="fa-solid fa-battery-three-quarters"></i>
+                    </div>
+                </div>
+                <div class="brand-bar">
+                    <div class="logo">
+                        <i class="fa-solid fa-compass text-accent rotate-anim"></i>
+                        <h1>SoloSafiri <span class="subtext-in">India</span></h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="header-btn notification-btn" id="btn-notifications" aria-label="Notifications">
+                            <i class="fa-regular fa-bell"></i>
+                            <span class="badge-dot"></span>
+                        </button>
+                        <button class="header-btn sos-quick-btn" id="btn-quick-sos" aria-label="Emergency SOS">
+                            <span>SOS</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Scrollable Screen Workspace -->
+            <main class="screen-container" id="screen-container">
+                
+                <!-- SPLASH SCREEN -->
+                <section class="screen active" id="screen-splash">
+                    <div class="splash-content">
+                        <div class="splash-logo-circle">
+                            <i class="fa-solid fa-compass-drafting splash-logo"></i>
+                        </div>
+                        <h2 class="splash-title">SoloSafiri</h2>
+                        <p class="splash-tagline">Explore India. Safely. Economically. Together.</p>
+                        <div class="splash-loader">
+                            <div class="bar"></div>
+                        </div>
+                        <span class="splash-footer">Made for Solo Travelers in India</span>
+                    </div>
+                </section>
+
+                <!-- MAP / ROUTE SCREEN (HOME) -->
+                <section class="screen" id="screen-home">
+                    <div class="screen-scroll-wrapper">
+                        <!-- Route Input Card -->
+                        <div class="glass-card search-card">
+                            <div class="search-title-row">
+                                <h3>Plan Your Indian Journey</h3>
+                                <button class="gps-refresh-btn" id="btn-toggle-gps" title="Toggle GPS tracking">
+                                    <i class="fa-solid fa-location-crosshairs text-accent pulse-gps"></i> <span id="gps-status-txt">GPS On</span>
+                                </button>
+                            </div>
+                            <div class="route-inputs">
+                                <div class="input-group">
+                                    <span class="input-icon source-icon"><i class="fa-solid fa-circle-dot"></i></span>
+                                    <select id="route-source" class="route-select">
+                                        <option value="" disabled selected>Select Source Station...</option>
+                                        <!-- Will be filled by js -->
+                                    </select>
+                                </div>
+                                <div class="route-line-connector"></div>
+                                <div class="input-group">
+                                    <span class="input-icon dest-icon"><i class="fa-solid fa-location-dot"></i></span>
+                                    <select id="route-destination" class="route-select">
+                                        <option value="" disabled selected>Select Destination...</option>
+                                        <!-- Will be filled by js -->
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-full margin-top-sm" id="btn-find-route">
+                                <i class="fa-solid fa-route"></i> Calculate Safest Route
+                            </button>
+                        </div>
+
+                        <!-- Route Statistics Panel -->
+                        <div id="route-stats-panel" class="glass-card route-stats-card hide">
+                            <div class="stats-grid">
+                                <div class="stat-box">
+                                    <span class="stat-label">Distance</span>
+                                    <span class="stat-val" id="stat-distance">-- km</span>
+                                </div>
+                                <div class="stat-box">
+                                    <span class="stat-label">Est. Time</span>
+                                    <span class="stat-val" id="stat-time">-- hrs</span>
+                                </div>
+                                <div class="stat-box">
+                                    <span class="stat-label">Safety Index</span>
+                                    <span class="stat-val text-success" id="stat-safety"><i class="fa-solid fa-shield-halved"></i> 9.4/10</span>
+                                </div>
+                            </div>
+                            
+                            <div class="route-segments" id="route-states-badge-container">
+                                <!-- Dynamic state badges user will cross -->
+                            </div>
+                        </div>
+
+                        <!-- Leaflet Interactive Map -->
+                        <div class="map-wrapper glass-card">
+                            <div id="leaflet-map"></div>
+                            <div class="map-controls">
+                                <button class="map-ctrl-btn" id="map-zoom-in"><i class="fa-solid fa-plus"></i></button>
+                                <button class="map-ctrl-btn" id="map-zoom-out"><i class="fa-solid fa-minus"></i></button>
+                                <button class="map-ctrl-btn active" id="map-layer-toggle" title="Toggle Attractions Layer"><i class="fa-solid fa-layer-group"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Transit Details Panel -->
+                        <div id="transit-panel" class="glass-card transit-card hide">
+                            <h4>Recommended Transport Options</h4>
+                            <div class="transit-options">
+                                <div class="transit-option" data-type="train">
+                                    <div class="transit-icon-wrapper train-bg"><i class="fa-solid fa-train"></i></div>
+                                    <div class="transit-details">
+                                        <h5>Indian Railways (Express)</h5>
+                                        <p class="transit-subtitle" id="transit-train-info">Sleeper/3AC available daily</p>
+                                    </div>
+                                    <div class="transit-price-time">
+                                        <span class="transit-price" id="transit-train-price">₹ 650+</span>
+                                        <span class="transit-dur" id="transit-train-time">-- hrs</span>
+                                    </div>
+                                </div>
+                                <div class="transit-option" data-type="bus">
+                                    <div class="transit-icon-wrapper bus-bg"><i class="fa-solid fa-bus"></i></div>
+                                    <div class="transit-details">
+                                        <h5>State/Private AC Sleeper</h5>
+                                        <p class="transit-subtitle" id="transit-bus-info">Flexible timings, stops enroute</p>
+                                    </div>
+                                    <div class="transit-price-time">
+                                        <span class="transit-price" id="transit-bus-price">₹ 850+</span>
+                                        <span class="transit-dur" id="transit-bus-time">-- hrs</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prompt for Next Steps -->
+                        <div class="route-hint glass-card" id="home-start-hint">
+                            <p><i class="fa-solid fa-circle-info text-accent"></i> Enter a source and destination to view optimized routes, budget accommodations, local food hubs, and traveler hubs along the route.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- EXPLORE: HOTELS, FOOD & ATTRACTIONS -->
+                <section class="screen" id="screen-explore">
+                    <div class="screen-scroll-wrapper">
+                        <!-- Navigation tabs for explore categories -->
+                        <div class="explore-tab-nav">
+                            <button class="explore-tab active" data-explore-tab="hotels"><i class="fa-solid fa-hotel"></i> Stays</button>
+                            <button class="explore-tab" data-explore-tab="food"><i class="fa-solid fa-utensils"></i> Food & Eats</button>
+                            <button class="explore-tab" data-explore-tab="places"><i class="fa-solid fa-mountain-sun"></i> Sights</button>
+                        </div>
+
+                        <!-- Current Location Badge -->
+                        <div class="location-context-badge">
+                            <i class="fa-solid fa-map-pin text-accent"></i>
+                            <span id="explore-location-title">Showing results for: Select route first</span>
+                        </div>
+
+                        <!-- Category View: HOTELS -->
+                        <div class="explore-category-view active" id="explore-view-hotels">
+                            <div class="filter-row">
+                                <span>Budget Stays (Solo Friendly)</span>
+                                <select class="filter-select" id="hotel-price-filter">
+                                    <option value="all">All Prices</option>
+                                    <option value="500">Under ₹500/night</option>
+                                    <option value="1000">Under ₹1000/night</option>
+                                    <option value="1500">Under ₹1500/night</option>
+                                </select>
+                            </div>
+                            <div class="card-list" id="explore-hotels-list">
+                                <!-- Dynamic hostel/hotel cards will go here -->
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-hotel"></i>
+                                    <p>Select a route on the Home tab to discover budget-friendly hostels (like Zostel, Hosteller) and female-only dorm rates.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category View: FOOD & EATS -->
+                        <div class="explore-category-view" id="explore-view-food">
+                            <div class="filter-row">
+                                <span>Authentic Local Food & Dhabas</span>
+                            </div>
+                            <div class="card-list" id="explore-food-list">
+                                <!-- Dynamic local food options will go here -->
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-utensils"></i>
+                                    <p>Select a route on the Home tab to load recommended local food points, hygienic dhabas, and traditional cuisines.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category View: PLACES / ATTRACTIONS -->
+                        <div class="explore-category-view" id="explore-view-places">
+                            <div class="filter-row">
+                                <span>Places of Interest & Historical Sites</span>
+                            </div>
+                            <div class="card-list" id="explore-places-list">
+                                <!-- Dynamic attractions will go here -->
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-mountain-sun"></i>
+                                    <p>Select a route on the Home tab to load famous forts, pristine beaches, scenic view points, and ancient temples.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SAFETY HUB (WOMEN SAFETY FIRST) -->
+                <section class="screen" id="screen-safety">
+                    <div class="screen-scroll-wrapper">
+                        <!-- Giant SOS Button Section -->
+                        <div class="glass-card safety-alert-card text-center">
+                            <span class="safety-title-badge"><i class="fa-solid fa-shield-heart text-accent"></i> Solo Safiri Safety Shield</span>
+                            
+                            <div class="sos-trigger-container">
+                                <button class="sos-btn" id="btn-sos-main">
+                                    <span class="sos-glow"></span>
+                                    <span class="sos-text">SOS</span>
+                                </button>
+                                <p class="sos-instruction">Press and hold or double-tap to trigger Emergency alert</p>
+                            </div>
+
+                            <div class="sos-timer-overlay hide" id="sos-countdown-container">
+                                <div class="sos-timer-box">
+                                    <h4>Triggering Alert In</h4>
+                                    <div class="countdown-number" id="sos-countdown-num">5</div>
+                                    <p>Live location will be shared. Tap below to abort.</p>
+                                    <button class="btn btn-glass" id="btn-sos-cancel">Cancel Alert</button>
+                                </div>
+                            </div>
+
+                            <!-- Siren Controller -->
+                            <div class="safety-controls-row">
+                                <button class="safety-ctrl-toggle alarm-off" id="btn-toggle-siren">
+                                    <i class="fa-solid fa-volume-high"></i>
+                                    <span>Loud Alarm Siren</span>
+                                </button>
+                                <button class="safety-ctrl-toggle sms-on" id="btn-toggle-auto-sms">
+                                    <i class="fa-solid fa-message"></i>
+                                    <span>Auto SMS Alerts</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Active Safety Alert Alerting Mode Banner -->
+                        <div class="safety-status-banner hide" id="safety-alert-active-banner">
+                            <div class="pulse-indicator red-pulse"></div>
+                            <div class="banner-details">
+                                <h5>EMERGENCY SOS ACTIVE</h5>
+                                <p>Live coordinates shared: <span id="safety-live-gps">Calculating...</span></p>
+                            </div>
+                            <button class="btn btn-sm btn-light" id="btn-deactivate-sos">Stop SOS</button>
+                        </div>
+
+                        <!-- Emergency Contacts Section -->
+                        <div class="glass-card">
+                            <div class="card-header-with-action">
+                                <h4>Emergency Contacts</h4>
+                                <button class="btn-text" id="btn-add-contact-safety"><i class="fa-solid fa-user-plus"></i> Add</button>
+                            </div>
+                            <div class="contact-list" id="safety-contacts-list">
+                                <!-- Contacts loaded from JS -->
+                            </div>
+                        </div>
+
+                        <!-- Indian Help Lines -->
+                        <div class="glass-card">
+                            <h4>National Helpline Directory</h4>
+                            <div class="helpline-grid">
+                                <div class="helpline-item" data-call="112">
+                                    <div class="helpline-num">112</div>
+                                    <span class="helpline-desc">National Emergency</span>
+                                    <i class="fa-solid fa-phone-volume call-icon"></i>
+                                </div>
+                                <div class="helpline-item" data-call="1091">
+                                    <div class="helpline-num">1091</div>
+                                    <span class="helpline-desc">Women Helpline</span>
+                                    <i class="fa-solid fa-phone-volume call-icon"></i>
+                                </div>
+                                <div class="helpline-item" data-call="181">
+                                    <div class="helpline-num">181</div>
+                                    <span class="helpline-desc">Abuse Helpline</span>
+                                    <i class="fa-solid fa-phone-volume call-icon"></i>
+                                </div>
+                                <div class="helpline-item" data-call="139">
+                                    <div class="helpline-num">139</div>
+                                    <span class="helpline-desc">Railway Security</span>
+                                    <i class="fa-solid fa-phone-volume call-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Safety Tips for Solo Travelers in India -->
+                        <div class="glass-card safety-tips-card">
+                            <h4>Smart Safety Rules (India)</h4>
+                            <ul>
+                                <li><i class="fa-solid fa-check text-success"></i> Save Offline maps for hill stations or remote trails (network drops are common).</li>
+                                <li><i class="fa-solid fa-check text-success"></i> Keep the SOS button pinned to the lock screen notification channel.</li>
+                                <li><i class="fa-solid fa-check text-success"></i> Travel on government-registered trains or public AC buses for overnight routes.</li>
+                                <li><i class="fa-solid fa-check text-success"></i> Arrive at new destinations during daylight hours whenever possible.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CONNECT: SOLO TRAVELERS CONNECT -->
+                <section class="screen" id="screen-connect">
+                    <div class="screen-scroll-wrapper">
+                        <!-- Connect Overview Dashboard -->
+                        <div class="glass-card connect-dashboard">
+                            <h3>Solo Travelers Hub</h3>
+                            <p>Find co-travelers exploring the same states. Coordinate rides, share food, and save costs together!</p>
+                            <div class="active-stats">
+                                <span class="active-bubble"><span class="green-dot"></span> 42 Online Nearby</span>
+                            </div>
+                        </div>
+
+                        <!-- Feed & Rooms Toggle -->
+                        <div class="explore-tab-nav">
+                            <button class="connect-tab active" data-connect-tab="feed"><i class="fa-solid fa-users"></i> Travelers Nearby</button>
+                            <button class="connect-tab" data-connect-tab="chat"><i class="fa-solid fa-comments"></i> Direct Chats</button>
+                        </div>
+
+                        <!-- Sub-Screen: TRAVELERS FEED -->
+                        <div class="connect-sub-view active" id="connect-view-feed">
+                            <div class="filter-row">
+                                <span>Co-Travelers in Current State</span>
+                                <button class="btn btn-sm btn-glass" id="btn-post-trip"><i class="fa-solid fa-plus"></i> Post Trip</button>
+                            </div>
+
+                            <div class="card-list" id="connect-travelers-list">
+                                <!-- Dynamic travelers cards generated in JS -->
+                            </div>
+                        </div>
+
+                        <!-- Sub-Screen: CHATS LIST / ACTIVE CHAT WINDOW -->
+                        <div class="connect-sub-view" id="connect-view-chat">
+                            <!-- Direct Chats List -->
+                            <div id="chats-list-container">
+                                <div class="card-list" id="active-chats-list">
+                                    <!-- Dynamic chats will go here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Interactive Chat Window Box (Hidden initially, shown on clicking chat) -->
+                            <div id="chat-window-box" class="hide">
+                                <div class="chat-window-header">
+                                    <button class="btn-text" id="btn-back-chats-list"><i class="fa-solid fa-chevron-left"></i> Back</button>
+                                    <div class="chat-header-user">
+                                        <div class="chat-avatar" id="chat-win-avatar">V</div>
+                                        <div>
+                                            <h5 id="chat-win-name">Varun Sharma</h5>
+                                            <span class="user-status-text">Online | Delhi to Jaipur</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="chat-window-messages" id="chat-win-messages-list">
+                                    <!-- Messages loaded dynamically -->
+                                </div>
+                                <div class="chat-window-input-row">
+                                    <input type="text" id="chat-win-input" placeholder="Type a message..." autocomplete="off" />
+                                    <button id="btn-chat-win-send" aria-label="Send Message"><i class="fa-solid fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI CHATBOT SCREEN (SAHAYRAK) -->
+                <section class="screen" id="screen-chatbot">
+                    <div class="chat-interface">
+                        <!-- Chatbot Header -->
+                        <div class="chatbot-header">
+                            <div class="bot-avatar-wrapper">
+                                <i class="fa-solid fa-robot bot-icon"></i>
+                                <span class="online-indicator"></span>
+                            </div>
+                            <div class="bot-header-text">
+                                <h3>Sahayrak AI</h3>
+                                <p>Your Local Guide & safety Assistant</p>
+                            </div>
+                        </div>
+
+                        <!-- Message Screen -->
+                        <div class="chat-messages-container" id="chatbot-messages-list">
+                            <!-- Initial Greeting -->
+                            <div class="chat-msg bot">
+                                <div class="msg-bubble">
+                                    <p>Namaste! 🙏 I am <strong>Sahayrak</strong>, your AI Travel assistant for India. I can help you with:</p>
+                                    <ul>
+                                        <li>Route recommendations and options.</li>
+                                        <li>Safety scores for specific states and solo travel tips.</li>
+                                        <li>Budget stays and local food tips.</li>
+                                    </ul>
+                                    <p>Where are you planning to travel in India?</p>
+                                </div>
+                                <span class="msg-time">Just now</span>
+                            </div>
+                        </div>
+
+                        <!-- Chat Quick Prompt Options -->
+                        <div class="chat-quick-chips">
+                            <button class="quick-chip" data-prompt="Best itinerary for Rajasthan?">Rajasthan Forts</button>
+                            <button class="quick-chip" data-prompt="Is Himachal Pradesh safe for solo female travelers?">Himachal Safety</button>
+                            <button class="quick-chip" data-prompt="How to travel cheap in Kerala?">Kerala Budget</button>
+                            <button class="quick-chip" data-prompt="What are key emergency numbers?">Helpline Numbers</button>
+                        </div>
+
+                        <!-- Chat Input Panel -->
+                        <div class="chat-input-bar">
+                            <input type="text" id="chatbot-input-field" placeholder="Ask Sahayrak about Indian routes, stays..." autocomplete="off" />
+                            <button class="chat-send-btn" id="btn-send-chatbot" aria-label="Send to chatbot">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PROFILE SCREEN -->
+                <section class="screen" id="screen-profile">
+                    <div class="screen-scroll-wrapper">
+                        <!-- User Card -->
+                        <div class="glass-card profile-main-card">
+                            <div class="profile-avatar-row">
+                                <div class="profile-avatar-container">
+                                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" alt="Traveler Portrait" class="profile-pic" id="profile-pic-img" />
+                                    <button class="edit-avatar-btn" id="btn-change-avatar" aria-label="Edit Avatar"><i class="fa-solid fa-camera"></i></button>
+                                </div>
+                                <div class="profile-meta">
+                                    <h3 id="profile-disp-name">Aaradhya Sen</h3>
+                                    <span class="user-tier-badge"><i class="fa-solid fa-crown text-accent"></i> Premium Backpacker</span>
+                                    <p class="profile-email" id="profile-disp-email">aaradhya.sen@gmail.com</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Travel Bio Statistics -->
+                            <div class="profile-stats-row">
+                                <div class="p-stat">
+                                    <span class="num" id="profile-stat-trips">6</span>
+                                    <span class="lbl">Trips</span>
+                                </div>
+                                <div class="p-stat border-x">
+                                    <span class="num" id="profile-stat-states">4</span>
+                                    <span class="lbl">States</span>
+                                </div>
+                                <div class="p-stat">
+                                    <span class="num" id="profile-stat-badges">3</span>
+                                    <span class="lbl">Badges</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Settings Panel -->
+                        <div class="glass-card">
+                            <h4>Personal Preferences</h4>
+                            <form id="profile-edit-form" onsubmit="return false;">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="input-user-name">Full Name</label>
+                                        <input type="text" id="input-user-name" value="Aaradhya Sen" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="input-user-email">Email Address</label>
+                                        <input type="email" id="input-user-email" value="aaradhya.sen@gmail.com" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="input-user-gender">Gender</label>
+                                        <select id="input-user-gender">
+                                            <option value="Female">Female</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="input-user-budget">Travel Class</label>
+                                        <select id="input-user-budget">
+                                            <option value="budget">Budget Hostel (₹500-₹1000)</option>
+                                            <option value="moderate">Homestay (₹1000-₹2500)</option>
+                                            <option value="luxury">Resort / Boutique Hotel</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary btn-full margin-top-sm" id="btn-save-profile">
+                                    <i class="fa-solid fa-floppy-disk"></i> Update Profile
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Emergency Contacts Settings Panel -->
+                        <div class="glass-card">
+                            <div class="card-header-with-action">
+                                <h4>Configure SOS Contacts</h4>
+                            </div>
+                            <div class="form-grid" id="contacts-settings-form-box">
+                                <div class="form-group">
+                                    <label for="new-contact-name">Contact Name</label>
+                                    <input type="text" id="new-contact-name" placeholder="e.g. Papa, Best Friend" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-contact-phone">Phone Number</label>
+                                    <input type="tel" id="new-contact-phone" placeholder="e.g. +91 98765 43210" />
+                                </div>
+                            </div>
+                            <button class="btn btn-outline btn-full margin-top-sm" id="btn-add-contact">
+                                <i class="fa-solid fa-plus"></i> Add Emergency Contact
+                            </button>
+                        </div>
+
+                        <!-- Achievements Badges Section -->
+                        <div class="glass-card">
+                            <h4>Solo Badges Earned</h4>
+                            <div class="badges-row" id="profile-badges-row">
+                                <div class="badge-item active">
+                                    <div class="badge-icon gold-badge"><i class="fa-solid fa-shield-cat"></i></div>
+                                    <span>Shield Safe</span>
+                                </div>
+                                <div class="badge-item active">
+                                    <div class="badge-icon copper-badge"><i class="fa-solid fa-campground"></i></div>
+                                    <span>Hostel Hopper</span>
+                                </div>
+                                <div class="badge-item active">
+                                    <div class="badge-icon silver-badge"><i class="fa-solid fa-train-subway"></i></div>
+                                    <span>Rail Rider</span>
+                                </div>
+                                <div class="badge-item lock" title="Visit Goa to unlock!">
+                                    <div class="badge-icon gray-badge"><i class="fa-solid fa-umbrella-beach"></i></div>
+                                    <span>Goa Beach</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Travel History Section -->
+                        <div class="glass-card">
+                            <h4>Saved Itineraries & History</h4>
+                            <div class="history-list" id="profile-history-list">
+                                <div class="history-item">
+                                    <div class="history-icon-circle"><i class="fa-solid fa-map"></i></div>
+                                    <div class="history-details">
+                                        <h5>Delhi to Jaipur Route</h5>
+                                        <p>Saved on May 10, 2026 • 270 km</p>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                                </div>
+                                <div class="history-item">
+                                    <div class="history-icon-circle"><i class="fa-solid fa-map"></i></div>
+                                    <div class="history-details">
+                                        <h5>Mumbai to Goa Route</h5>
+                                        <p>Completed in Apr 2026 • 600 km</p>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+            </main>
+
+            <!-- Bottom Navigation Bar Menu -->
+            <nav class="app-nav" id="app-nav">
+                <button class="nav-item active" data-screen="home">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span>Map</span>
+                </button>
+                <button class="nav-item" data-screen="explore">
+                    <i class="fa-solid fa-compass"></i>
+                    <span>Explore</span>
+                </button>
+                <button class="nav-item" data-screen="safety">
+                    <i class="fa-solid fa-shield-heart"></i>
+                    <span>Safety</span>
+                </button>
+                <button class="nav-item" data-screen="connect">
+                    <i class="fa-solid fa-users-between-lines"></i>
+                    <span>Connect</span>
+                </button>
+                <button class="nav-item" data-screen="chatbot">
+                    <i class="fa-solid fa-comment-dots"></i>
+                    <span>Sahayrak</span>
+                </button>
+                <button class="nav-item" data-screen="profile">
+                    <i class="fa-solid fa-user-gear"></i>
+                    <span>Profile</span>
+                </button>
+            </nav>
+
+            <!-- Global Alert Prompt Modal (Used for SOS and Booking simulations) -->
+            <div class="modal-backdrop hide" id="global-modal">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h4 id="modal-title">Alert Details</h4>
+                        <button class="close-btn" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="modal-body" id="modal-body">
+                        <!-- Filled in dynamically -->
+                    </div>
+                    <div class="modal-footer" id="modal-footer">
+                        <!-- Action buttons dynamically inserted -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast Notification Container -->
+            <div class="toast-container" id="toast-container"></div>
+
+        </div> <!-- End phone-frame -->
+    </div> <!-- End app-container -->
+
+    <!-- Leaflet Javascript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Socket.IO Client for Real-time -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2l8mveRyak4F6CDnB9jHv8LMPsv7OrDHZzpq4mI2/M0xPj3OQfPRAyJ+mmS4xESi" crossorigin="anonymous"></script>
+    <!-- Core Application Logic Script -->
+    <script src="app.js"></script>
+</body>
+</html>

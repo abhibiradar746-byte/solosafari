@@ -23,9 +23,9 @@ A solo travel safety and planning web/mobile app for India. The repo contains a 
 ## Free hosting guidance
 
 ### 1. GitHub Pages (frontend only)
-- Add the static site files from `frontend/` to the repository root or configure GitHub Pages to serve from a `docs/` folder.
-- Enable GitHub Pages in the repository settings.
-- The likely URL will be:
+- This repo now includes a `docs/` folder with the static frontend files.
+- Enable GitHub Pages in the repository settings, and select branch `main` + folder `docs`.
+- The expected URL will be:
   `https://abhibiradar746-byte.github.io/solosafari/`
 
 > Note: GitHub Pages can host only the frontend. The backend still needs a separate free host.
