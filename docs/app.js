@@ -333,6 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gpsMarker) { gpsMarker.setLatLng([lat, lng]); }
         const gpsText = document.getElementById('safety-live-gps');
         if (gpsText) gpsText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        if (state.activeMap && !state.routePathLine && state.gpsActive) {
+            state.activeMap.panTo([lat, lng]);
+        }
     }
 
     /* -----------------------------------------------------------------------
@@ -347,9 +350,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateClock, 1000);
     updateClock();
 
-    /* -----------------------------------------------------------------------
-       SCREEN SWITCHING
-    ----------------------------------------------------------------------- */
+    /* Helper to find closest city from user coordinates */
+    function getNearestCity(lat, lng) {
+        let nearestKey = 'delhi';
+        let minDist = Infinity;
+        Object.keys(CITIES).forEach(key => {
+            const city = CITIES[key];
+            const dist = haversineDistance(lat, lng, city.lat, city.lng);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestKey = key;
+            }
+        });
+        return nearestKey;
+    }
+
+    /* Screen switching logic with map load guards and smart GPS default recommendations */
+    let mapInitialized = false;
     function switchScreen(targetScreenId) {
         if (!screens[targetScreenId]) return;
         state.activeScreen = targetScreenId;
@@ -358,7 +375,27 @@ document.addEventListener('DOMContentLoaded', () => {
         navItems.forEach(item => {
             item.classList.toggle('active', item.getAttribute('data-screen') === targetScreenId);
         });
-        if (targetScreenId === 'home' && state.activeMap) { setTimeout(() => state.activeMap.invalidateSize(), 150); }
+        
+        if (targetScreenId === 'home') {
+            if (!mapInitialized) {
+                initMap();
+                mapInitialized = true;
+            } else if (state.activeMap) {
+                setTimeout(() => { state.activeMap.invalidateSize(); }, 150);
+            }
+        }
+        
+        if (targetScreenId === 'explore') {
+            if (!state.selectedDestination) {
+                const nearestKey = getNearestCity(state.userLocation.lat, state.userLocation.lng);
+                const cityName = CITIES[nearestKey].name;
+                document.getElementById('explore-location-title').textContent = `Nearest Hub: ${cityName} (Detected via Live GPS)`;
+                loadAccommodations(nearestKey);
+                loadLocalFoods(nearestKey);
+                loadTouristSights(nearestKey);
+            }
+        }
+
         if (targetScreenId === 'profile') renderProfileValues();
         if (targetScreenId === 'safety') renderSafetyContacts();
         if (targetScreenId === 'connect') { renderTravelersFeed(); renderActiveChatsList(); }
@@ -471,6 +508,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('stat-distance').textContent = `${distance} km`;
         document.getElementById('stat-time').textContent     = `${duration} hrs`;
         document.getElementById('stat-safety').innerHTML     = `<i class="fa-solid fa-shield-halved"></i> ${safetyIndex}`;
+
+        // Styled Google Maps Navigation Button
+        let gmapsBtn = document.getElementById('btn-gmaps-navigation');
+        if (!gmapsBtn) {
+            gmapsBtn = document.createElement('a');
+            gmapsBtn.id = 'btn-gmaps-navigation';
+            gmapsBtn.className = 'btn btn-secondary btn-full margin-top-sm';
+            gmapsBtn.target = '_blank';
+            gmapsBtn.innerHTML = `<i class="fa-solid fa-location-arrow"></i> Navigate in Google Maps`;
+            document.getElementById('route-stats-panel').appendChild(gmapsBtn);
+        }
+        gmapsBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${srcCity.lat},${srcCity.lng}&destination=${destCity.lat},${destCity.lng}&travelmode=driving`;
+
+        state.selectedSource = srcKey;
+        state.selectedDestination = destKey;
 
         const statesContainer = document.getElementById('route-states-badge-container');
         statesContainer.innerHTML = '';
@@ -750,7 +802,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 Contacts Notified: ${state.userProfile.contacts.length}
             </div>
             <p>Stay calm. Help is being contacted.</p>`;
-        modalFooter.innerHTML = `<button class="btn btn-primary btn-sm" id="btn-modal-sms-ok">Acknowledge</button>`;
+
+        // Construct high-fidelity native SMS URI
+        const smsMessage = encodeURIComponent(`🚨 EMERGENCY SOS from ${state.userProfile.name}: My Location - https://maps.google.com/?q=${lat},${lng}. Please help!`);
+        const phoneNumbers = state.userProfile.contacts.map(c => c.phone.replace(/\s+/g, '')).join(',');
+        const smsHref = /iPhone|iPad|iPod/i.test(navigator.userAgent) 
+            ? `sms:${phoneNumbers}&body=${smsMessage}` 
+            : `sms:${phoneNumbers}?body=${smsMessage}`;
+
+        modalFooter.innerHTML = `
+            <a href="${smsHref}" class="btn btn-secondary btn-sm" id="btn-modal-sms-send"><i class="fa-solid fa-message"></i> Send Mobile SMS</a>
+            <button class="btn btn-primary btn-sm" id="btn-modal-sms-ok">Acknowledge</button>`;
+
         globalModal.classList.remove('hide');
         document.getElementById('btn-modal-sms-ok').onclick = closeModal;
 
@@ -1165,7 +1228,6 @@ document.addEventListener('DOMContentLoaded', () => {
        BOOTSTRAP
     ----------------------------------------------------------------------- */
     loadStateFromStorage();
-    initMap();
     populateDropdowns();
 
     /* Initial data render for connect tab */
